@@ -1,0 +1,142 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String?
+  name      String
+  role      String   @default("PRO") // "PRO" | "ADMIN"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  proProfile ProProfile?
+}
+
+model ProProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug               String   @unique
+  businessName       String
+  bio                String?
+  avatarUrl          String?
+  phone              String
+  whatsapp           String
+  languages          String   // Comma-separated: "EN,PT,ES"
+  baseZipCode        String
+  baseCity           String
+  baseState          String   @default("FL")
+  serviceRadiusMiles Int      @default(25)
+  verified           Boolean  @default(false)
+  ratingAverage      Float    @default(5.0)
+  reviewCount        Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  categories         ProCategory[]
+  portfolio          PortfolioItem[]
+  unlockedLeads      LeadUnlock[]
+  reviews            Review[]
+}
+
+model Category {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  nameEn          String
+  namePt          String
+  nameEs          String
+  icon            String   // Lucide icon name
+  descriptionEn   String
+  descriptionPt   String
+  descriptionEs   String
+  wizardQuestions String   // JSON string with dynamic questions
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  pros            ProCategory[]
+  requests        ServiceRequest[]
+}
+
+model ProCategory {
+  id           String     @id @default(cuid())
+  proProfileId String
+  categoryId   String
+  proProfile   ProProfile @relation(fields: [proProfileId], references: [id], onDelete: Cascade)
+  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([proProfileId, categoryId])
+}
+
+model PortfolioItem {
+  id           String     @id @default(cuid())
+  proProfileId String
+  proProfile   ProProfile @relation(fields: [proProfileId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  beforeImgUrl String
+  afterImgUrl  String
+  createdAt    DateTime   @default(now())
+}
+
+model ServiceRequest {
+  id              String   @id @default(cuid())
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id])
+  clientName      String
+  clientEmail     String
+  clientPhone     String
+  clientWhatsapp  String?
+  zipCode         String
+  city            String
+  state           String   @default("FL")
+  urgency         String   // "urgent" | "this_week" | "flexible"
+  answersJson     String   // JSON of wizard Q&A
+  notes           String?
+  status          String   @default("OPEN") // "OPEN" | "FULFILLED" | "CLOSED"
+  maxUnlocks      Int      @default(4)
+  unlockCount     Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  unlockedBy      LeadUnlock[]
+  reviews         Review[]
+}
+
+model LeadUnlock {
+  id               String         @id @default(cuid())
+  serviceRequestId String
+  proProfileId     String
+  serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  proProfile       ProProfile     @relation(fields: [proProfileId], references: [id], onDelete: Cascade)
+  unlockedAt       DateTime       @default(now())
+
+  @@unique([serviceRequestId, proProfileId])
+}
+
+model Review {
+  id               String          @id @default(cuid())
+  serviceRequestId String?
+  proProfileId     String
+  clientName       String
+  rating           Int             // 1 to 5
+  comment          String
+  createdAt        DateTime        @default(now())
+
+  serviceRequest   ServiceRequest? @relation(fields: [serviceRequestId], references: [id], onDelete: SetNull)
+  proProfile       ProProfile      @relation(fields: [proProfileId], references: [id], onDelete: Cascade)
+}
+
+model FloridaZip {
+  zip      String  @id
+  city     String
+  county   String
+  lat      Float
+  lng      Float
+}
